@@ -10,10 +10,10 @@
 
 					<h4>Kies een productgroep</h4>
 					<div class="row">
-						<?php $categories = array(17, 18, 19, 20);
+						<?php $categories = array(23, 24, 25, 26);
 						foreach($categories as $catId):
-							$term = get_term($catId, 'product_cat');
-							$thumbId = get_term_meta($catId, 'thumbnail_id', true);
+							$term = get_term($catId, 'types');
+							$thumbId = get_term_meta($catId, 'loogman-types-image-id', true);
 
 							$catName = $term->name;
 							$catUrl = get_category_link($catId);
@@ -31,10 +31,7 @@
 					<div class="sep-horizontal"></div>
 
 					<h4>Direct zoeken op naam</h4>
-					<div id="search" class="right-addon">
-						<i class="glyphicon glyphicon-search"></i>
-						<input type="text" class="form-control" />
-					</div>
+					<?php get_template_part('component/search'); ?>
 
 					<div class="sep-horizontal"></div>
 					<div class="row">

@@ -14,8 +14,9 @@
 			</div>
 			<div id="header-main-menu" class="collapse navbar-collapse">
 				<ul class="nav navbar-nav">
-					<li id="location">LOCATIE: <strong>ROTTERDAM</strong></li>
+					<li id="location">LOCATIE: <strong><?php echo get_user_meta(get_current_user_id(), '_location', true); ?></strong></li>
 				</ul>
+
 				<?php wp_nav_menu( array(
 						'menu'              => 'main-menu',
 						'theme_location'    => 'loogman',
@@ -24,6 +25,13 @@
 						'fallback_cb'       => 'wp_bootstrap_navwalker::fallback',
 						'walker'            => new wp_bootstrap_navwalker())
 				); ?>
+
+				<?php global $current_user;
+				wp_get_current_user(); ?>
+                <ul class="nav navbar-nav navbar-right">
+                    <li id="username">Gebruiker: <strong><?php echo $current_user->user_login; ?></strong></li>
+                    <li id="logout"><a href="<?php echo wp_logout_url( get_the_permalink(139) ); ?>">Uitloggen</a></li>
+                </ul>
 			</div>
 		</div>
 	</nav>

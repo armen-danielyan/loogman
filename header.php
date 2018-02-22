@@ -17,4 +17,4 @@
 
 	<?php wp_head(); ?>
 </head>
-<body>
+<body <?php if(!is_page(139)) echo 'style="padding-bottom:46px"' ?> >
