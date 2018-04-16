@@ -16,6 +16,19 @@ function loadFrontScriptsStyles() {
 }
 
 /**
+ * Load Admin Scripts and Styles
+ */
+add_action( 'admin_enqueue_scripts', 'loadBackScriptsStyles' );
+function loadBackScriptsStyles() {
+	wp_enqueue_media();
+	wp_enqueue_script('loogmanAdminPapaparse', get_stylesheet_directory_uri() . '/libs/wp_papaparse/papaparse.min.js', '', VERSION, true);
+	wp_enqueue_script('loogmanAdminMain', get_stylesheet_directory_uri() . '/assets/js/admin-main.js', array('jquery', 'loogmanAdminPapaparse'), VERSION, true);
+	wp_localize_script( 'loogmanAdminMain', 'wp_vars', array(
+		'ajax_url' => admin_url( 'admin-ajax.php' )
+	) );
+}
+
+/**
  * Register Thumbnails
  */
 if (function_exists( 'add_theme_support' )) {
@@ -26,7 +39,6 @@ if (function_exists( 'add_theme_support' )) {
 	add_image_size('thumb-medium', 280, 160, true);
 	add_image_size('thumb-large', 380, 285, true);
 }
-
 
 /**
  * Register Menus
@@ -69,7 +81,7 @@ function registerProductPostType() {
 		'menu_icon'             => 'dashicons-cart',
 		'menu_position'         => 28,
 		'labels'                => $labels,
-		'supports'              => array( 'title', 'editor', 'thumbnail', 'revisions' ),
+		'supports'              => array( 'author', 'title', 'editor', 'thumbnail', 'revisions' ),
 		'taxonomies'            => array( 'types' ),
 		'hierarchical'          => false,
 		'public'                => true,
@@ -132,7 +144,6 @@ function addProductsMetaboxes() {
 	add_meta_box( 'loogman_price', 'Price', 'loogmanPrice', 'products', 'side', 'high' );
 	add_meta_box( 'loogman_formaat', 'Formaat In cm', 'loogmanFormaat', 'products', 'side', 'high' );
 }
-
 
 /**
  * Create Aanvullende Informatie Metabox
@@ -320,6 +331,7 @@ function filterQuery( $wp_query ) {
 if (current_user_can('loogman')) {
 	add_filter('views_edit-products', 'filterTabs');
 	add_filter('parse_query', 'filterQuery' );
+	add_filter('show_admin_bar', '__return_false');
 }
 
 /**
@@ -346,6 +358,13 @@ function addExtraUserProfileFields( $user ) { ?>
                 <span class="description">Please enter your Budget.</span>
             </td>
         </tr>
+        <tr>
+            <th><label for="budget">Document</label></th>
+            <td>
+                <input type="text" name="_document" id="_document" value="<?php echo esc_attr( get_the_author_meta( '_document', $user->ID ) ); ?>" class="regular-text" /><br />
+                <button type="button" id="attach-document" class="button">Attach Document</button>
+            </td>
+        </tr>
 	</table>
 <?php }
 
@@ -358,6 +377,7 @@ function saveExtraUserProfileFields( $user_id ) {
 	}
 	update_user_meta( $user_id, '_location', $_POST['_location'] );
 	update_user_meta( $user_id, '_budget', $_POST['_budget'] );
+	update_user_meta( $user_id, '_document', $_POST['_document'] );
 }
 
 
@@ -419,7 +439,12 @@ function removeShoppingBasket() {
 
 		if($userMetaValue && $userMetaValue->$productKey) {
 			unset($userMetaValue->$productKey);
-			update_user_meta($userId, $metaKey, json_encode($userMetaValue));
+			if(empty((array)$userMetaValue)) {
+				delete_user_meta($userId, $metaKey);
+			} else {
+				update_user_meta($userId, $metaKey, json_encode($userMetaValue));
+            }
+
 		}
 
 		echo json_encode(array('status' => 1, 'statusMsg' => 'Item Removed'));
@@ -429,27 +454,157 @@ function removeShoppingBasket() {
 
 	wp_die();
 }
-
 /**
- * Order Now
+ * Confirm Order
  */
-add_action( 'wp_ajax_order-now', 'orderNow' );
-add_action( 'wp_ajax_nopriv_order-now', 'orderNow' );
-function orderNow() {
+add_action( 'wp_ajax_confirm-order', 'confirmOrder' );
+add_action( 'wp_ajax_nopriv_confirm-order', 'confirmOrder' );
+function confirmOrder() {
 	$userId = (isset($_POST['user_id']) && $_POST['user_id']) ? $_POST['user_id'] : false;
 
 	if($userId) {
 		$metaKey = '_shopping_basket';
+		$metaNotes = '_order_notes';
+		$notes = get_user_meta($userId, '_order_notes', true);
+		$userData = get_userdata($userId);
 
 		$userMetaValue = json_decode(get_user_meta($userId, $metaKey, true));
+		if($userMetaValue) {
+			$shoppingBasketItems = get_object_vars($userMetaValue);
+		};
+		$themeOptions = get_option('theme_options');
+
+		ob_start(); ?>
+        <html>
+            <head>
+                <style>
+                    body {
+                        background-color: #eee;
+                    }
+                    table {
+                        width: 75%;
+                        background-color: #fff;
+                    }
+                    table, th, td {
+                        border: 1px solid #ccc;
+                    }
+                    th, td {
+                        padding: 5px 10px;
+                    }
+                </style>
+            </head>
+        <body>
+            <table>
+                <thead>
+                    <tr>
+                        <th colspan="2">Sign</th>
+                        <th>Aantal</th>
+                        <th>Prijs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $totalAmoout = 0;
+                    $totalPrice = 0;
+                    $userBudget = get_user_meta($userId, '_budget', true);
+                    foreach ($shoppingBasketItems as $key => $item) {
+                        $postId = $item->_productId;
+                        $itemPrice = get_post_meta($postId, '_loogman_price', true); ?>
+                        <tr>
+                            <td>
+                                <?php if(has_post_thumbnail($postId)) {
+                                    echo get_the_post_thumbnail($postId,'thumb-basket');
+                                } else {
+                                    echo wp_get_attachment_image(135, 'thumb-basket', '');
+                                } ?>
+                            </td>
+                            <td>
+                                <?php $taxes = get_post_taxonomies($postId);
+                                $tax = $taxes[0];
+                                $terms = get_the_terms($postId, $tax); ?>
+                                <a href="<?php echo get_the_permalink($postId); ?>"><?php echo get_the_title($postId); ?></a><br>
+                                <?php echo $terms[0]->name; ?>
+                            </td>
+                            <td><?php echo $item->_productAmount; ?></td>
+                            <td><?php echo number_format($itemPrice, 2, ',', ''); ?></td>
+                        </tr>
+                        <?php $totalAmoout += $item->_productAmount;
+                        $totalPrice += $item->_productAmount * $itemPrice; ?>
+                    <?php } ?>
+                    <tr>
+                        <td colspan="2"><strong><?php echo strtoupper('Totaal'); ?></strong></td>
+                        <td><?php echo $totalAmoout; ?></td>
+                        <td><?php echo number_format($totalPrice, 2, ',', ''); ?></td>
+                    </tr>
+                    <?php if($notes) { ?>
+                        <tr>
+                            <td colspan="4"><strong><?php echo strtoupper('Uw Opmerking Bij deze bestelling'); ?></strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="4"><?php echo $notes; ?></td>
+                        </tr>
+                    <?php } ?>
+                    <tr>
+                        <td>
+                            <div><strong>Budget (€):</strong></div><br>
+                            <strong>Na bestelling:</strong>
+                        </td>
+                        <td colspan="3">
+                            <div><?php echo number_format($userBudget, 2, ',', ''); ?></div><br>
+                            <?php echo number_format($userBudget - $totalPrice, 2, ',', ''); ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </body>
+        </html>
+
+        <?php $mailContent = ob_get_contents();
+		ob_end_clean();
+
+		wp_mail(
+            array(
+	            $themeOptions['loogman_email'],
+	            $userData->user_email
+            ),
+			$themeOptions['loogman_email_subject'],
+            $mailContent,
+            array(
+		        'MIME-Version: 1.0\r\n',
+                'Content-Type: text/html; charset=utf-8\r\n'
+        ));
 
 		if($userMetaValue) {
 			update_user_meta($userId, $metaKey, '');
+			update_user_meta($userId, $metaNotes, '');
 		}
 
 		echo json_encode(array('status' => 1, 'statusMsg' => 'Oreded successfuly'));
 	} else {
 		echo json_encode(array('status' => 0, 'statusMsg' => 'Data is missing'));
+	}
+
+	wp_die();
+}
+
+/**
+ * Add Notes
+ */
+add_action( 'wp_ajax_add-notes', 'addNotes' );
+add_action( 'wp_ajax_nopriv_add-notes', 'addNotes' );
+function addNotes() {
+	$userId = (isset($_POST['user_id']) && $_POST['user_id']) ? $_POST['user_id'] : false;
+	$notes = (isset($_POST['notes']) && $_POST['notes']) ? $_POST['notes'] : false;
+
+	if($userId && $notes) {
+		$metaKey = '_order_notes';
+
+		if (strlen($notes) > 1000) $notes = substr( $notes, 0, 1000 );
+
+		update_user_meta($userId, $metaKey, sanitize_text_field($notes));
+
+		echo json_encode(array('status' => 1, 'statusMsg' => 'Added notes'));
+	} else {
+		echo json_encode(array('status' => 0, 'statusMsg' => 'Data is empty'));
 	}
 
 	wp_die();
@@ -470,11 +625,21 @@ function redirectLoginPage(){
     }
 }
 
+add_action('wp_login_failed', 'loginFailed');
+function loginFailed($username) {
+	$referrer = $_SERVER['HTTP_REFERER'];
+	if ( !empty($referrer) && !strstr($referrer,'wp-login') && !strstr($referrer,'wp-admin') ) {
+		wp_redirect( $referrer . '?login=failed' );
+		exit;
+	}
+}
+
 
 class loogmanOptions {
 	public function __construct() {
 		if ( is_admin() ) {
 			add_action( 'admin_menu', array( 'loogmanOptions', 'addAdminMenu' ) );
+			add_action( 'admin_menu', array( 'loogmanOptions', 'addAdminMenuImportProducts' ) );
 			add_action( 'admin_init', array( 'loogmanOptions', 'register_settings' ) );
 		}
 	}
@@ -492,10 +657,10 @@ class loogmanOptions {
 
 	public static function addAdminMenu() {
 		add_menu_page(
-			'Theme Settings',
-			'Theme Settings',
+			'Loogman Settings',
+			'Loogman Setting',
 			'manage_options',
-			'theme-settings',
+			'loogman-settings',
 			array( 'loogmanOptions', 'createAdminPage' )
 		);
 	}
@@ -506,27 +671,22 @@ class loogmanOptions {
 
 	public static function sanitize( $options ) {
 		if ( $options ) {
-			if ( ! empty( $options['checkbox_example'] ) ) {
-				$options['checkbox_example'] = 'on';
+			if ( ! empty( $options['loogman_email'] ) ) {
+				$options['loogman_email'] = sanitize_text_field( $options['loogman_email'] );
 			} else {
-				unset( $options['checkbox_example'] );
+				unset( $options['loogman_email'] );
 			}
 
-			if ( ! empty( $options['input_example'] ) ) {
-				$options['input_example'] = sanitize_text_field( $options['input_example'] );
+			if ( ! empty( $options['loogman_email_subject'] ) ) {
+				$options['loogman_email_subject'] = sanitize_text_field( $options['loogman_email_subject'] );
 			} else {
-				unset( $options['input_example'] );
-			}
-
-			if ( ! empty( $options['select_example'] ) ) {
-				$options['select_example'] = sanitize_text_field( $options['select_example'] );
+				unset( $options['loogman_email_subject'] );
 			}
 		}
 		return $options;
 	}
 
 	public static function createAdminPage() { ?>
-
         <div class="wrap">
             <h1>Theme Options</h1>
 
@@ -534,64 +694,216 @@ class loogmanOptions {
 				<?php settings_fields( 'theme_options' ); ?>
                 <table class="form-table wpex-custom-admin-login-table">
                     <tr valign="top">
-                        <th scope="row">Checkbox Example</th>
+                        <th scope="row">Email</th>
                         <td>
-							<?php $value = self::getThemeOption( 'checkbox_example' ); ?>
-                            <input type="checkbox"
-                                   name="theme_options[checkbox_example]" <?php checked( $value, 'on' ); ?>> <?php esc_html_e( 'Checkbox example description.', 'text-domain' ); ?>
+							<?php $value = self::getThemeOption( 'loogman_email' ); ?>
+                            <input type="email" name="theme_options[loogman_email]"
+                                   value="<?php echo esc_attr( $value ); ?>">
                         </td>
                     </tr>
 
                     <tr valign="top">
-                        <th scope="row">Input Example</th>
+                        <th scope="row">Email Subject</th>
                         <td>
-							<?php $value = self::getThemeOption( 'input_example' ); ?>
-                            <input type="text" name="theme_options[input_example]"
+			                <?php $value = self::getThemeOption( 'loogman_email_subject' ); ?>
+                            <input type="text" name="theme_options[loogman_email_subject]"
                                    value="<?php echo esc_attr( $value ); ?>">
                         </td>
                     </tr>
-
-                    <tr valign="top" class="wpex-custom-admin-screen-background-section">
-                        <th scope="row">Select Example</th>
-                        <td>
-							<?php $value = self::getThemeOption( 'select_example' ); ?>
-                            <select name="theme_options[select_example]">
-								<?php
-								$options = array(
-									'1' => 'Option 1',
-									'2' => 'Option 2',
-									'3' => 'Option 3',
-								);
-								foreach ( $options as $id => $label ) { ?>
-                                    <option value="<?php echo esc_attr( $id ); ?>" <?php selected( $value, $id, true ); ?>>
-										<?php echo strip_tags( $label ); ?>
-                                    </option>
-								<?php } ?>
-                            </select>
-                        </td>
-                    </tr>
-
-                    <tr valign="top" class="wpex-custom-admin-screen-background-section">
-                        <th scope="row">Upload File</th>
-                        <td>
-		                    <?php $value = self::getThemeOption( '_loogman_csv_path' ); ?>
-                            <input type="text" name="theme_options[_loogman_csv_path]"
-                                   value="<?php echo esc_attr( $value ); ?>">
-                            <button class="upload-csv">Set CSV</button>
-                        </td>
-                    </tr>
-
                 </table>
 
 				<?php submit_button(); ?>
 
             </form>
         </div>
+	<?php }
 
-        <script>
+	public static function addAdminMenuImportProducts() {
+		add_menu_page(
+			'Import Products',
+			'Import Products',
+			'manage_options',
+			'import-products',
+			array( 'loogmanOptions', 'createImportProductsPage' )
+		);
+	}
 
-        </script>
+	public static function createImportProductsPage() { ?>
+        <div class="wrap">
+            <h1>Import Products</h1>
+
+            <table class="form-table wpex-custom-admin-login-table">
+                <tr valign="top" class="wpex-custom-admin-screen-background-section">
+                    <th scope="row">Import CSV</th>
+                    <td>
+                        <input type="file" id="select-csv">
+                        <button id="import-csv" type="button">Import <span id="import-progress"></span></button>
+                    </td>
+                </tr>
+
+                <tr valign="top" class="wpex-custom-admin-screen-background-section">
+                    <td colspan="2">
+                        <div style="height: 400px; overflow-y: scroll">
+                            <table id="csv-table">
+
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
 	<?php }
 }
 
 new loogmanOptions();
+
+
+/**
+ * Add Product
+ */
+add_action( 'wp_ajax_add-product', 'addProduct' );
+add_action( 'wp_ajax_nopriv_add-product', 'addProduct' );
+function addProduct() {
+    $data = $_POST['data'] ? $_POST['data'] : '';
+    if($data === '') {
+        echo json_encode(array('status' => 'ERR', 'errorMsg' => 'Data is empty!'));
+	    wp_die();
+	    return;
+    }
+
+    foreach ($data as $product) {
+        $pName = $product[0] ? trim($product[0]) : '';
+        $pCategory = $product[1] ? trim($product[1]) : '';
+        $pDim = $product[2] && $product[4] ? trim($product[2]) . ' x ' . trim($product[4]) : '';
+        $pExtraInfoA = $product[5] ? trim($product[5]) : '';
+        $pExtraInfoB = $product[6] ? trim($product[6]) : '';
+	    $pImageName = $product[8] ? trim($product[8]) : '';
+	    if($product[7]) {
+		    preg_match('/[0-9\,\.]+/', trim($product[7]), $matchesPrice);
+		    $pPrice = $matchesPrice[0];
+        } else {
+		    $pPrice = 0;
+        }
+
+	    $userName = getUserFromProductName($pName);
+        $userId = checkUser($userName);
+        $imgUrl = "http://{$_SERVER['SERVER_NAME']}/archive/{$userName}/web/{$pImageName}.jpg";
+        $termId = checkTerm($pCategory);
+
+	    $postArg = array(
+		    'post_title' => $pName,
+		    'post_status' => 'publish',
+		    'post_author' => $userId,
+		    'post_type' => 'products',
+		    'tax_input' => array(
+		            'types' => array($termId)
+            ),
+            'meta_input' => array(
+                    '_loogman_extra_a' => $pExtraInfoA,
+                    '_loogman_extra_b' => $pExtraInfoB,
+                    '_loogman_formaat' => $pDim,
+                    '_loogman_price' => $pPrice
+            )
+	    );
+	    $insertedProductId = wp_insert_post($postArg);
+	    if ($insertedProductId) {
+		    setProductFeaturedImage($insertedProductId, $imgUrl, $userId);
+	    }
+    }
+
+	wp_die();
+}
+
+/**
+ * Get Username(location) from Product Name
+ */
+function getUserFromProductName($productName) {
+    $usersShortNames = array(
+	    'Alm' => 'Almere',
+        'Adijk' => 'Amsteldijk',
+        'Adam' => 'Amsterdam',
+        'Hfd' => 'Hoofddorp',
+        'Lely' => 'Lelystad',
+        'Rdam' => 'Rotterdam',
+        'Utr' => 'Utrecht',
+        'Aals' => 'Aalsmeer'
+    );
+
+    $output = '';
+
+    foreach ($usersShortNames as $key => $value) {
+        if(strpos( $productName, $key ) === 0) {
+	        $output = $value;
+	        break;
+        }
+    }
+
+    return $output;
+}
+
+/**
+ * Create User if user doesn't exist
+ */
+function checkUser($userName) {
+	$userId = username_exists( $userName );
+	if ( !$userId ) {
+		$userEmail = strtolower($userName) . '@easyliquids.nl';
+		$randomPassword = wp_generate_password( $length = 12, $include_standard_special_chars = false );
+		$userId = wp_create_user( $userName, $randomPassword, $userEmail );
+
+		$user = new WP_User($userId);
+		$user->set_role('loogman');
+
+		update_user_meta( $userId, '_location', $userName );
+	}
+	return (int)$userId;
+}
+
+/**
+ * Create Term if term doesn't exist
+ */
+function checkTerm($term) {
+	$termId = term_exists( $term, 'types' );
+	if(!$termId){
+		wp_insert_term($term, 'types');
+	}
+
+	return (int)$termId['term_id'];
+}
+
+/**
+ * Set Product Feature Image
+ */
+function setProductFeaturedImage($productId, $imgUrl, $userId){
+	preg_match('/^.+\/(.+)/', $imgUrl, $matchesExt);
+	$imgExt = $matchesExt[1];
+
+	preg_match('/^.+\/(.+)\./', $imgUrl, $matchesName);
+	$imgName = $matchesName[1];
+
+	$httpWP = new WP_Http();
+	$photo = $httpWP->request($imgUrl);
+
+	if( is_wp_error( $photo ) ) {
+		return;
+	}
+
+	$attachment = wp_upload_bits($imgExt, null, $photo['body'], date("Y-m", strtotime($photo['headers']['last-modified'])));
+	$fileType = wp_check_filetype(basename($attachment['file']), null);
+
+	$postInfo = array(
+		'post_mime_type' => $fileType['type'],
+		'post_title' => $imgName,
+		'post_content' => '',
+		'post_status' => 'inherit',
+		'post_author' => $userId,
+	);
+
+	$fileName = $attachment['file'];
+	$attachId = wp_insert_attachment($postInfo, $fileName, $productId);
+	$attachData = wp_generate_attachment_metadata($attachId, $fileName);
+	wp_update_attachment_metadata($attachId, $attachData);
+	set_post_thumbnail($productId, $attachId);
+
+	return $attachId;
+}

@@ -11,3 +11,9 @@
         </div>
 	</div>
 </div>
+
+<div class="row">
+    <div class="col-sm-6 col-sm-offset-3">
+        <a class="btn-back-dark" href="<? echo home_url(); ?>">Meer bestellen</a>
+    </div>
+</div>

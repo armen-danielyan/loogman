@@ -10,7 +10,7 @@
 
 					<h4>Kies een productgroep</h4>
 					<div class="row">
-						<?php $categories = array(23, 24, 25, 26);
+						<?php $categories = array(31, 24, 25, 26);
 						foreach($categories as $catId):
 							$term = get_term($catId, 'types');
 							$thumbId = get_term_meta($catId, 'loogman-types-image-id', true);
@@ -27,6 +27,24 @@
 							</div>
 						<?php endforeach; ?>
 					</div>
+                    <div class="row">
+						<?php $categories = array(27, 28);
+						foreach($categories as $catId):
+							$term = get_term($catId, 'types');
+							$thumbId = get_term_meta($catId, 'loogman-types-image-id', true);
+
+							$catName = $term->name;
+							$catUrl = get_category_link($catId);
+							$imageUrl = wp_get_attachment_url($thumbId); ?>
+
+                            <div class="col-xs-3 item-cat">
+                                <a href="<?php echo $catUrl; ?>">
+                                    <img src="<?php echo $imageUrl; ?>" alt="<?php echo $catName; ?>">
+                                    <div class="title-cat"><?php echo $catName; ?></div>
+                                </a>
+                            </div>
+						<?php endforeach; ?>
+                    </div>
 
 					<div class="sep-horizontal"></div>
 

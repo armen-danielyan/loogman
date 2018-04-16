@@ -33,7 +33,7 @@
 	                    <?php $paged = ( get_query_var('paged') ) ? get_query_var('paged') : 1;
 	                    $productsArchiveArgs = array(
 		                    'post_type'         => 'products',
-		                    'author__in'        => array(get_current_user_id()),
+		                    'author__in'        => get_current_user_id() == 1 ? array() : array(get_current_user_id()),
 		                    'posts_per_page'    => 12,
 		                    'paged'             => $paged,
 		                    'tax_query'         => array(
@@ -44,7 +44,6 @@
 			                    )
 		                    )
 	                    );
-
 	                    $productsQuery = new WP_Query( $productsArchiveArgs ); ?>
 	                    <?php if($productsQuery->have_posts()): $i = 0; ?>
                             <div class="col-sm-12 archive-pagination"><?php pagination($productsQuery->max_num_pages); ?></div>
@@ -73,7 +72,7 @@
 
                                 <?php endwhile; ?>
 
-                                <?php if($i < 12 && $i % 3 !== 2) echo '</div>'; ?>
+                                <?php if(($i - 1) % 3 !== 2) echo '</div>'; ?>
 
                             </div>
                             <div class="col-sm-12"><div class="sep-horizontal"></div></div>

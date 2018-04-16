@@ -87,7 +87,7 @@
 						<div class="col-xs-4 col-md-12 col-lg-4">
                             <div class="location-icon-wrap">
                                 <img src="<?php echo get_stylesheet_directory_uri() . '/assets/img/pdf.jpg'; ?>" alt="">
-                                <a href="#"><?php echo strtoupper('Bekijk locatie'); ?></a>
+                                <a target="_blank" href="<?php echo get_user_meta(get_current_user_id(), '_document', true); ?>"><?php echo strtoupper('Bekijk locatie'); ?></a>
                             </div>
 						</div>
 

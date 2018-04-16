@@ -33,12 +33,6 @@
 
 			<div class="col-md-5">
 				<?php get_template_part('component/sc-thank-you'); ?>
-
-                <div class="row">
-                    <div class="col-sm-6 col-sm-offset-3">
-                        <a class="btn-back-dark" href="<? echo home_url(); ?>">Meer bestellen</a>
-                    </div>
-                </div>
 			</div>
 		</div>
 	</div>

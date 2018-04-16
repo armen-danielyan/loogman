@@ -40,7 +40,7 @@
 
 								<?php endwhile; ?>
 
-								<?php if($i < 12 && $i % 3 !== 2) echo '</div>'; ?>
+								<?php if(($i - 1) % 3 !== 2) echo '</div>'; ?>
 
 							</div>
 							<div class="col-sm-12"><div class="sep-horizontal"></div></div>

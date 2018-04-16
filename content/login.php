@@ -8,6 +8,11 @@
 						<form name="loginform" action="<?php echo site_url( '/wp-login.php' ); ?>" method="post">
 							<input type="text" size="20" value="" name="log" placeholder="Gebruikersnaam" >
 							<input type="password" size="20" value="" name="pwd" placeholder="Wachtwoord">
+
+                            <?php if(isset($_GET['login']) AND $_GET['login'] === 'failed') { ?>
+                                <div class="error-msg">Wrong username or password.</div>
+                            <?php } ?>
+
 							<input type="submit" class="btn-green" value="Login" name="wp-submit">
 
 							<input type="hidden" value="<?php echo esc_attr( home_url() ); ?>" name="redirect_to">

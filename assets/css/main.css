@@ -156,6 +156,11 @@ a:hover {
 
 #search {
     position: relative;
+    padding-bottom: 15px;
+}
+
+#home #search {
+    position: relative;
     padding-bottom: 30px;
 }
 
@@ -238,6 +243,11 @@ a:hover {
     display: block;
     color: #014289;
     font-weight: bold;
+}
+
+.sc-items td a.btn-green {
+    color: #ffffff;
+    font-weight: normal;
 }
 
 .sc-items table {
@@ -348,7 +358,7 @@ a:hover {
     color: #474747;
 }
 
-#types .sep-horizontal, #thank-you .sep-horizontal {
+#types .sep-horizontal, #thank-you .sep-horizontal, #confirm .sep-horizontal {
     margin: 10px 0;
 }
 
@@ -369,7 +379,7 @@ a:hover {
     margin: 0;
 }
 
-#thank-you #main-wrapper h4 {
+#thank-you #main-wrapper h4, #confirm #main-wrapper h4 {
     margin-bottom: 5px;
 }
 
@@ -431,6 +441,14 @@ input.btn-green, button.btn-green {
     float: none;
 }
 
+#confirm #main-wrapper .btn-back-dark {
+    margin: 0;
+}
+
+#additional-notes {
+    margin: 15px 0;
+}
+
 #login {
     text-align: center;
 }
@@ -454,6 +472,12 @@ input.btn-green, button.btn-green {
 .login-form a {
     font-size: 12px;
     color: #b1b1b1;
+}
+
+.login-form .error-msg {
+    color: #9c2425;
+    margin: 10px 0;
+    font-size: 12px;
 }
 
 .btn-arrow {

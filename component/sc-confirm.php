@@ -31,6 +31,7 @@
 	                        <?php $totalAmoout = 0;
 	                        $totalPrice = 0;
 	                        $userBudget = get_user_meta($userId, '_budget', true);
+	                        $notes = get_user_meta($userId, '_order_notes', true);
                             foreach ($shoppingBasketItems as $key => $item) {
 	                            $postId = $item->_productId;
 	                            $itemPrice = get_post_meta($postId, '_loogman_price', true); ?>
@@ -66,6 +67,14 @@
                             <td class="text-forth"><?php echo $totalAmoout; ?></td>
                             <td class="text-forth"><?php echo number_format($totalPrice, 2, ',', ''); ?></td>
                         </tr>
+                        <?php if($notes) { ?>
+                            <tr>
+                                <td colspan="4" class="text-forth" style="text-align: left;"><?php echo strtoupper('Uw Opmerking Bij deze bestelling'); ?></td>
+                            </tr>
+                            <tr>
+                                <td colspan="4"><?php echo $notes; ?></td>
+                            </tr>
+                        <?php } ?>
                         <tr>
                             <td></td>
                             <td>
@@ -77,7 +86,6 @@
                                 <?php echo number_format($userBudget - $totalPrice, 2, ',', ''); ?>
                             </td>
                             <td colspan="2">
-                                <a href="<?php echo get_the_permalink(144); ?>" id="order-now" class="btn-green">Bestel nu</a>
                             </td>
                         </tr>
                         </tbody>
@@ -86,6 +94,12 @@
 			</div>
 		</div>
 	</div>
+</div>
+
+<div class="row">
+    <div class="col-sm-12">
+        <div id="confirm-order" class="btn-green">Meer bestellen</div>
+    </div>
 </div>
 
 <script>
@@ -101,6 +115,37 @@
                         action: "remove_shopping_basket",
                         post_id: postId,
                         user_id: <?php echo get_current_user_id(); ?>
+                    },
+                    success: function(data) {
+                        var parsedData = JSON.parse(data);
+                        if(parsedData.status) location.reload();
+                    }
+                });
+            });
+
+            $("#confirm-order").on("click", function() {
+                $.ajax({
+                    url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                    type: "POST",
+                    data: {
+                        action: "confirm-order",
+                        user_id: <?php echo get_current_user_id(); ?>
+                    },
+                    success: function(data) {
+                        var parsedData = JSON.parse(data);
+                        if(parsedData.status) location.replace("<?php echo get_the_permalink(141); ?>");
+                    }
+                });
+            });
+
+            $("#add-notes").on("click", function() {
+                $.ajax({
+                    url: "<?php echo admin_url('admin-ajax.php'); ?>",
+                    type: "POST",
+                    data: {
+                        action: "add-notes",
+                        user_id: <?php echo get_current_user_id(); ?>,
+                        notes: $("#additional-notes").val()
                     },
                     success: function(data) {
                         var parsedData = JSON.parse(data);
