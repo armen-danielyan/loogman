@@ -98,7 +98,7 @@
 
 <div class="row">
     <div class="col-sm-12">
-        <div id="confirm-order" class="btn-green">Meer bestellen</div>
+        <div id="confirm-order" class="btn-green">Bevestig order</div>
     </div>
 </div>
 
@@ -153,6 +153,14 @@
                     }
                 });
             });
+
+            $("#additional-notes").bind("change keyup", function() {
+                if($(this).val() !== "") {
+                    $("#add-notes").addClass("active-green");
+                } else {
+                    $("#add-notes").removeClass("active-green");
+                }
+            })
         })
     });
 </script>

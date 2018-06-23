@@ -34,6 +34,8 @@
 	                    $productsArchiveArgs = array(
 		                    'post_type'         => 'products',
 		                    'author__in'        => get_current_user_id() == 1 ? array() : array(get_current_user_id()),
+		                    'orderby'           => 'title',
+		                    'order'             => 'ASC',
 		                    'posts_per_page'    => 12,
 		                    'paged'             => $paged,
 		                    'tax_query'         => array(
@@ -76,7 +78,18 @@
 
                             </div>
                             <div class="col-sm-12"><div class="sep-horizontal"></div></div>
-                            <div class="col-sm-12 archive-pagination"><?php pagination($productsQuery->max_num_pages); ?></div>
+                        <div class="row">
+                            <div class="col-xs-6">
+                                <div class="location-icon-wrap">
+                                    <img src="<?php echo get_stylesheet_directory_uri() . '/assets/img/pdf.jpg'; ?>" alt="">
+                                    <a target="_blank" href="<?php echo get_user_meta(get_current_user_id(), '_document', true); ?>"><?php echo strtoupper('Bekijk locatie'); ?></a>
+                                </div>
+                            </div>
+
+                            <div class="col-xs-6">
+                                <div class="archive-pagination"><?php pagination($productsQuery->max_num_pages); ?></div>
+                            </div>
+                        </div>
 	                    <?php endif; ?>
                     </div>
 

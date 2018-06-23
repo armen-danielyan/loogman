@@ -270,7 +270,7 @@ function pagination($pages = '', $range = 1) {
  */
 add_action( 'pre_get_posts', 'correctPostsPerPage' );
 function correctPostsPerPage( $query ) {
-	if ( $query->is_tax('types') && $query->is_main_query() ) {
+	if ( $query->is_tax('types') && $query->is_main_query() && !is_admin()) {
 		$query->set( 'posts_per_page', 12 );
 	}
 }
@@ -391,9 +391,7 @@ function addShoppingBasket() {
 	$userId = (isset($_POST['user_id']) && $_POST['user_id']) ? $_POST['user_id'] : false;
 	$productAmount = (isset($_POST['product_amount']) && $_POST['product_amount']) ? $_POST['product_amount'] : false;
 
-	$_productPrice = get_post_meta($postId, '_loogman_price', true);
-
-	if($postId && $productAmount && $userId && $_productPrice) {
+	if($postId && $productAmount && $userId) {
 		$metaKey = '_shopping_basket';
 		$productKey = 'product_' . $postId;
 		$data = (object)[];
@@ -506,6 +504,7 @@ function confirmOrder() {
                     <?php $totalAmoout = 0;
                     $totalPrice = 0;
                     $userBudget = get_user_meta($userId, '_budget', true);
+                    $subjectPart = [];
                     foreach ($shoppingBasketItems as $key => $item) {
                         $postId = $item->_productId;
                         $itemPrice = get_post_meta($postId, '_loogman_price', true); ?>
@@ -520,8 +519,11 @@ function confirmOrder() {
                             <td>
                                 <?php $taxes = get_post_taxonomies($postId);
                                 $tax = $taxes[0];
-                                $terms = get_the_terms($postId, $tax); ?>
-                                <a href="<?php echo get_the_permalink($postId); ?>"><?php echo get_the_title($postId); ?></a><br>
+                                $terms = get_the_terms($postId, $tax);
+                                $productTitle = get_the_title($postId);
+                                array_push($subjectPart, $productTitle);
+                                ?>
+                                <a href="<?php echo get_the_permalink($postId); ?>"><?php echo $productTitle; ?></a><br>
                                 <?php echo $terms[0]->name; ?>
                             </td>
                             <td><?php echo $item->_productAmount; ?></td>
@@ -545,7 +547,7 @@ function confirmOrder() {
                     <?php } ?>
                     <tr>
                         <td>
-                            <div><strong>Budget (€):</strong></div><br>
+                            <div><strong>Budget (&euro;):</strong></div><br>
                             <strong>Na bestelling:</strong>
                         </td>
                         <td colspan="3">
@@ -561,12 +563,15 @@ function confirmOrder() {
         <?php $mailContent = ob_get_contents();
 		ob_end_clean();
 
+        $emailsRaw = explode(',', $themeOptions['loogman_email']);
+        $emails = [];
+        foreach ($emailsRaw as $email) {
+            array_push($emails, trim($email));
+        }
+
 		wp_mail(
-            array(
-	            $themeOptions['loogman_email'],
-	            $userData->user_email
-            ),
-			$themeOptions['loogman_email_subject'],
+			$emails,
+			$themeOptions['loogman_email_subject'] . ': ' . implode(', ', $subjectPart),
             $mailContent,
             array(
 		        'MIME-Version: 1.0\r\n',
@@ -585,6 +590,16 @@ function confirmOrder() {
 
 	wp_die();
 }
+
+
+/**
+ * Change Email Sender Name
+ */
+add_filter( 'wp_mail_from_name', 'changeSenderName' );
+function changeSenderName( $originalEmailFrom ) {
+	return 'Signing Loogman';
+}
+
 
 /**
  * Add Notes
@@ -682,6 +697,30 @@ class loogmanOptions {
 			} else {
 				unset( $options['loogman_email_subject'] );
 			}
+
+			if ( ! empty( $options['loogman_exact_clientid'] ) ) {
+				$options['loogman_exact_clientid'] = sanitize_text_field( $options['loogman_exact_clientid'] );
+			} else {
+				unset( $options['loogman_exact_clientid'] );
+			}
+
+			if ( ! empty( $options['loogman_exact_clientsecret'] ) ) {
+				$options['loogman_exact_clientsecret'] = sanitize_text_field( $options['loogman_exact_clientsecret'] );
+			} else {
+				unset( $options['loogman_exact_clientsecret'] );
+			}
+
+			if ( ! empty( $options['loogman_exact_redirecturl'] ) ) {
+				$options['loogman_exact_redirecturl'] = sanitize_text_field( $options['loogman_exact_redirecturl'] );
+			} else {
+				unset( $options['loogman_exact_redirecturl'] );
+			}
+
+			if ( ! empty( $options['loogman_exact_division'] ) ) {
+				$options['loogman_exact_division'] = sanitize_text_field( $options['loogman_exact_division'] );
+			} else {
+				unset( $options['loogman_exact_division'] );
+			}
 		}
 		return $options;
 	}
@@ -694,11 +733,15 @@ class loogmanOptions {
 				<?php settings_fields( 'theme_options' ); ?>
                 <table class="form-table wpex-custom-admin-login-table">
                     <tr valign="top">
-                        <th scope="row">Email</th>
+                        <th colspan="2" style="text-align: center">Email Settings</th>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Email Addresses</th>
                         <td>
 							<?php $value = self::getThemeOption( 'loogman_email' ); ?>
-                            <input type="email" name="theme_options[loogman_email]"
+                            <input style="width: 50%;" type="text" name="theme_options[loogman_email]"
                                    value="<?php echo esc_attr( $value ); ?>">
+                            <p><i><?php _e('Email addresses for email notifications (use comma seperator). Ex. john@email.com, smith@email.com', 'loogman'); ?></i></p>
                         </td>
                     </tr>
 
@@ -706,14 +749,56 @@ class loogmanOptions {
                         <th scope="row">Email Subject</th>
                         <td>
 			                <?php $value = self::getThemeOption( 'loogman_email_subject' ); ?>
-                            <input type="text" name="theme_options[loogman_email_subject]"
+                            <input style="width: 50%;" type="text" name="theme_options[loogman_email_subject]"
                                    value="<?php echo esc_attr( $value ); ?>">
+                        </td>
+                    </tr>
+
+                    <tr valign="top">
+                        <th colspan="2" style="text-align: center">Exact Settings</th>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Client ID</th>
+                        <td>
+			                <?php $value = self::getThemeOption( 'loogman_exact_clientid' ); ?>
+                            <input style="width: 50%;" type="text" name="theme_options[loogman_exact_clientid]"
+                                   value="<?php echo esc_attr( $value ); ?>">
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Client Secret</th>
+                        <td>
+			                <?php $value = self::getThemeOption( 'loogman_exact_clientsecret' ); ?>
+                            <input style="width: 50%;" type="password" name="theme_options[loogman_exact_clientsecret]"
+                                   value="<?php echo esc_attr( $value ); ?>">
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Redirect URI</th>
+                        <td>
+			                <?php $value = self::getThemeOption( 'loogman_exact_redirecturl' ); ?>
+                            <input style="width: 50%;" type="text" name="theme_options[loogman_exact_redirecturl]"
+                                   value="<?php echo esc_attr( $value ); ?>">
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row">Division</th>
+                        <td>
+			                <?php $value = self::getThemeOption( 'loogman_exact_division' ); ?>
+                            <input style="width: 50%;" type="text" name="theme_options[loogman_exact_division]"
+                                   value="<?php echo esc_attr( $value ); ?>">
+                        </td>
+                    </tr>
+
+                    <tr valign="top">
+                        <th scope="row">Connect</th>
+                        <td>
+                            <a target="_blank" href="<?php echo get_the_permalink(5384); ?>">Login Exact</a>
                         </td>
                     </tr>
                 </table>
 
 				<?php submit_button(); ?>
-
             </form>
         </div>
 	<?php }
@@ -907,3 +992,27 @@ function setProductFeaturedImage($productId, $imgUrl, $userId){
 
 	return $attachId;
 }
+
+/**
+ * Add Visual Editor for taxonomy
+ */
+add_action('types_edit_form_fields', 'addDescriptionVisualEditor');
+function addDescriptionVisualEditor($term, $taxonomy) { ?>
+    <tr valign="top">
+        <th scope="row"><?php _e('Description', 'loogman'); ?></th>
+        <td>
+			<?php wp_editor(html_entity_decode($term->description), 'description', array('media_buttons' => false)); ?>
+            <script>
+                jQuery(window).ready(function(){
+                    jQuery('label[for=description]').parent().parent().remove();
+                });
+            </script>
+        </td>
+    </tr>
+<?php }
+
+/**
+ * Remove html filter for taxonomy description field
+ */
+remove_filter( 'pre_term_description', 'wp_filter_kses' );
+remove_filter( 'term_description', 'wp_kses_data' );

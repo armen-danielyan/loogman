@@ -3,7 +3,7 @@
 		<div class="row">
 			<div class="col-md-12">
 				<div id="main-wrapper">
-					<h3><?php the_title(); ?></h3>
+					<h3><?php the_title(); ?>fff</h3>
 
 					<div class="sep-horizontal"></div>
 
@@ -11,9 +11,9 @@
 						<?php $args = array(
 							'post_type' => 'post',
 							'order' => 'ASC',
-							'orderby' => 'date',
-							'posts_per_page' => '2'
+							'orderby' => 'date'
 						);
+						wp_reset_query();
 						$newsPosts = new WP_Query($args);
 						if($newsPosts->have_posts()): while($newsPosts->have_posts()): $newsPosts->the_post(); ?>
 							<div class="col-sm-3 item-news">

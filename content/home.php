@@ -55,7 +55,7 @@
 					<div class="row">
 						<?php $args = array(
 							'post_type' => 'post',
-							'order' => 'ASC',
+							'order' => 'DESC',
 							'orderby' => 'date',
 							'posts_per_page' => '2'
 						);

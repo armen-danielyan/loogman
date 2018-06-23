@@ -13,11 +13,25 @@
 					</div>
 
 					<div class="row">
-						<?php if(have_posts()): $i = 0; ?>
-							<div class="col-sm-12 archive-pagination"><?php pagination(); ?></div>
+						<?php global $query_string;
+						$paged = ( get_query_var('paged') ) ? get_query_var('paged') : 1;
+
+
+						$searchParams = array(
+							'orderby'           => 'title',
+							'order'             => 'ASC',
+							'posts_per_page'    => 12,
+							'paged'             => $paged,
+                        );
+						wp_parse_str( $query_string, $searchQuery );
+						$args = array_merge($searchQuery, $searchParams);
+						$search = new WP_Query( $args );
+
+						if($search->have_posts()): $i = 0; ?>
+							<div class="col-sm-12 archive-pagination"><?php pagination($search->max_num_pages); ?></div>
 							<div class="col-sm-12"><div class="sep-horizontal"></div></div>
 							<div class="col-sm-12">
-								<?php while(have_posts()): the_post(); ?>
+								<?php while($search->have_posts()): $search->the_post(); ?>
 
 									<?php if($i % 3 === 0) echo '<div class="row">'; ?>
 
@@ -44,7 +58,7 @@
 
 							</div>
 							<div class="col-sm-12"><div class="sep-horizontal"></div></div>
-							<div class="col-sm-12 archive-pagination"><?php pagination(); ?></div>
+							<div class="col-sm-12 archive-pagination"><?php pagination($search->max_num_pages); ?></div>
 						<?php else: ?>
 							<h4>No Result</h4>
 						<?php endif; ?>

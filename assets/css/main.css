@@ -548,6 +548,10 @@ input.btn-green, button.btn-green {
     color: #c4c4c4;
 }
 
+.active-green {
+    background-color: #accd00;
+}
+
 
 
 @media (max-width: 767px) {

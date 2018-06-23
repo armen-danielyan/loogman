@@ -5,7 +5,14 @@
       <paths name="loogman">
         <serverdata>
           <mappings>
-            <mapping deploy="/" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/" local="$PROJECT_DIR$/../../.." web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="movie">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
